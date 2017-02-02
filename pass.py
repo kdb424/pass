@@ -13,7 +13,7 @@ def parse_args():
         Parses Arguments
     """
     parser = argparse.ArgumentParser(
-        description='Displays the open orders for a currency pair')
+        description='Make passwords harder ta hack.')
     parser.add_argument(
         '-c', '--clipboard',
         help='Puts output to clipboard',
