@@ -13,7 +13,7 @@ def parse_args():
         Parses Arguments
     """
     parser = argparse.ArgumentParser(
-        description='Make passwords harder ta hack.')
+        description='Make passwords harder to hack.')
     parser.add_argument(
         '-c', '--clipboard',
         help='Puts output to clipboard',
@@ -72,6 +72,8 @@ if __name__ == "__main__":
     args = parse_args()
     if not args.config:
         conf = get_conf("passwords.cfg")
+    else:
+        conf = get_conf(args.config)
 
     ip = ''
     if args.gui:
