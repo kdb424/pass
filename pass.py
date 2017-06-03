@@ -29,6 +29,11 @@ def parse_args():
         help='GUI password input',
         action='store_true',
         )
+    parser.add_argument(
+        '-o', '--output',
+        help='Output file',
+        action='store_true',
+        )
     return parser.parse_args()
 
 def get_conf(config_file):
@@ -57,6 +62,11 @@ def send_password(args, hash):
             r.clipboard_append(hash)
             r.update()
             r.destroy()
+    elif args.output:
+        #TODO Change password store location and check platform
+        file = open('/tmp/password.txt', 'w')
+        file.write(hash)
+        file.close()
 
 def gui_password():
     try: # Python 2
@@ -83,7 +93,6 @@ if __name__ == "__main__":
         ip = gui_password()
     else:
         ip = getpass.getpass(prompt='')
-    print(ip)
     '''
         Password is encoded to UTF-8, converted to hex based on ASCII,
         then converted to a base 10 int for recovery options.
@@ -114,7 +123,6 @@ if __name__ == "__main__":
             hash1 = hash1.hexdigest()
             hash2 = hashlib.sha256(hash1.encode('UTF-8'))
             hash2 = hash2.hexdigest()
-            #rint(hash2)
             if hash2 == conf['tag']:
                 # Emergency exit
                 print('Backup hash accepted')
