@@ -15,4 +15,5 @@ optional arguments:
   -C CONFIG, --config CONFIG
                         Specifies a config file
   -g, --gui             GUI password input
+  -o, --output          Output file
 ```
