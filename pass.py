@@ -6,6 +6,7 @@ import argparse
 import binascii
 import getpass
 import hashlib
+import sys
 import yaml
 
 def parse_args():
@@ -76,10 +77,13 @@ if __name__ == "__main__":
         conf = get_conf(args.config)
 
     ip = ''
-    if args.gui:
+    if not sys.stdin.isatty():
+        ip = str(sys.stdin.read().strip())
+    elif args.gui:
         ip = gui_password()
     else:
         ip = getpass.getpass(prompt='')
+    print(ip)
     '''
         Password is encoded to UTF-8, converted to hex based on ASCII,
         then converted to a base 10 int for recovery options.
