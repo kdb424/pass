@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """
-    Writes config files for the main app
+    Creates a psasword hash file for input verification and backup passwords
 """
 import binascii
 import hashlib
 import getpass
 import sys
 import yaml
+
 
 def write_conf(cf, data):
     """
@@ -17,18 +18,18 @@ def write_conf(cf, data):
 
 
 if __name__ == "__main__":
-    backup_tags = []
-    main_tag = ''
+    backup_pswds = []
+    main_pswd = ''
     if not sys.stdin.isatty():
-        main_tag = str(sys.stdin.read().strip())
+        main_pswd = str(sys.stdin.read().strip())
     else:
-        print('Scan main tag')
-        main_tag = getpass.getpass(prompt='')
-    main_tag = main_tag.encode('UTF-8')
-    main_tag = binascii.hexlify(main_tag)
-    main_tag = str(int(main_tag, 16))
+        print('Enter password')
+        main_pswd = getpass.getpass(prompt='')
+    main_pswd = main_pswd.encode('UTF-8')
+    main_pswd = binascii.hexlify(main_pswd)
+    main_pswd = str(int(main_pswd, 16))
 
-    main_hash = hashlib.sha256(main_tag.encode('UTF-8'))
+    main_hash = hashlib.sha256(main_pswd.encode('UTF-8'))
     main_hash = main_hash.hexdigest()
 
     main_hash_store = hashlib.sha256(main_hash.encode('UTF-8'))
@@ -38,21 +39,21 @@ if __name__ == "__main__":
         while True:
             x = input('Do you want to set up a backup card? (y/N)')
             if x.lower() == 'y' or x.lower() == 'yes':
-                print('Scan backup tag')
-                bak_tag = getpass.getpass(prompt='')
-                bak_tag = bak_tag.encode('UTF-8')
-                bak_tag = binascii.hexlify(bak_tag)
-                bak_tag = str(int(bak_tag, 16))
+                print('Scan backup pswd')
+                bak_pswd = getpass.getpass(prompt='')
+                bak_pswd = bak_pswd.encode('UTF-8')
+                bak_pswd = binascii.hexlify(bak_pswd)
+                bak_pswd = str(int(bak_pswd, 16))
 
-                bak_hash = hashlib.sha256(bak_tag.encode('UTF-8'))
+                bak_hash = hashlib.sha256(bak_pswd.encode('UTF-8'))
                 bak_hash = bak_hash.hexdigest()
-                bak_hash = hashlib.sha256(bak_tag.encode('UTF-8'))
+                bak_hash = hashlib.sha256(bak_pswd.encode('UTF-8'))
                 bak_hash = bak_hash.hexdigest()
-                bak_diff = int(bak_tag) - int(main_tag)
-                backup_tags.append('{}:{}'.format(bak_hash, bak_diff))
+                bak_diff = int(bak_pswd) - int(main_pswd)
+                backup_pswds.append('{}:{}'.format(bak_hash, bak_diff))
 
             else:
                 break
 
-    conf = {'tag':main_hash_store, 'backups':backup_tags}
+    conf = {'pswd': main_hash_store, 'backups': backup_pswds}
     write_conf('passwords.cfg', conf)
