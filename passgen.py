@@ -44,12 +44,15 @@ if __name__ == "__main__":
         main_pswd = getpass.getpass(prompt='')
     main_pswd = main_pswd.encode('UTF-8')
     main_pswd = binascii.hexlify(main_pswd)
-    main_pswd = str(int(main_pswd, 16)).encode('UTF-8')
+    main_pswd = str(int(main_pswd, 16))
+    main_pswd = main_pswd.encode('UTF-8')
 
     if args.bcrypt:
         try:
             import bcrypt
-            salt = bcrypt.gensalt()
+            if salt is None:
+                salt = bcrypt.gensalt()
+
             passhash = bcrypt.hashpw(main_pswd, salt)
             storehash = bcrypt.hashpw(passhash, salt)
 
@@ -61,10 +64,10 @@ if __name__ == "__main__":
         passhash = hashlib.sha256(main_pswd)
         passhash = passhash.hexdigest()
 
-        storehash = hashlib.sha256(passhash)
+        storehash = hashlib.sha256(passhash.encode('UTF-8'))
         storehash = storehash.hexdigest()
 
-    if sys.stdin.isatty():
+    if sys.stdin.isatty() and not args.bcrypt:
         while True:
             x = input('Do you want to set up a backup card? (y/N)')
             if x.lower() == 'y' or x.lower() == 'yes':

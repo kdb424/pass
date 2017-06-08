@@ -124,11 +124,14 @@ if __name__ == "__main__":
     storehash = None
     if args.bcrypt:
         # bcrypt hashing
-        # TODO Actually finish bcrypt
         try:
             import bcrypt
             passhash = bcrypt.hashpw(ip, conf['salt'])
             storehash = bcrypt.hashpw(passhash, conf['salt'])
+            if storehash == conf['pswd']:
+                print('Correct')
+                send_password(args, passhash.decode('UTF-8'))
+
 
         except ImportError:
             print('Bcrypt is not installed')
@@ -140,25 +143,25 @@ if __name__ == "__main__":
         passhash = passhash.hexdigest()
         storehash = hashlib.sha256(passhash.encode('UTF-8'))
         storehash = storehash.hexdigest()
-    if storehash == conf['pswd']:
-        # If double hash is correct (stored hash), pass correct hash along
-        print("Correct")
-        send_password(args, passhash)
+        if storehash == conf['pswd']:
+            # If double hash is correct (stored hash), pass correct hash along
+            print("Correct")
+            send_password(args, passhash)
 
-    else:
-        for i in conf['backups']:
-            bakhash, diff = i.split(':')
-            '''
-            If a backup hash is found, apply the stored differential
-            to create the correct input as recovery.
-            '''
-            passhash = str(int(ip) - int(diff))
+        else:
+            for i in conf['backups']:
+                bakhash, diff = i.split(':')
+                '''
+                If a backup hash is found, apply the stored differential
+                to create the correct input as recovery.
+                '''
+                passhash = str(int(ip) - int(diff))
 
-            passhash = hashlib.sha256(passhash.encode('UTF-8'))
-            passhash = passhash.hexdigest()
-            storehash = hashlib.sha256(passhash.encode('UTF-8'))
-            storehash = storehash.hexdigest()
-            if storehash == conf['pswd']:
-                # Emergency exit
-                print('Backup hash accepted')
-                send_password(args, passhash)
+                passhash = hashlib.sha256(passhash.encode('UTF-8'))
+                passhash = passhash.hexdigest()
+                storehash = hashlib.sha256(passhash.encode('UTF-8'))
+                storehash = storehash.hexdigest()
+                if storehash == conf['pswd']:
+                    # Emergency exit
+                    print('Backup hash accepted')
+                    send_password(args, passhash)
