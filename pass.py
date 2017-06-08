@@ -6,6 +6,7 @@ import argparse
 import binascii
 import getpass
 import hashlib
+import platform
 import sys
 import yaml
 
@@ -35,6 +36,11 @@ def parse_args():
         help='Output file',
         action='store_true',
         )
+    parser.add_argument(
+        '-b', '--bcrypt',
+        help='Use bcrypt',
+        action='store_true',
+        )
     return parser.parse_args()
 
 
@@ -52,15 +58,14 @@ def send_password(args, finalhash):
         Send password to the specified output
     '''
     if args.clipboard:
-        import platform
         if platform.system() == 'Linux':
             from subprocess import Popen, PIPE
             p = Popen(['xsel', '-pib'], stdin=PIPE)
             p.communicate(input=str.encode(finalhash))
         elif platform.system == 'Darwin' or platform.system() == 'Windows':
-            try: # Python 2
+            try:  # Python 2
                 from Tkinter import Tk
-            except ImportError: # Python 3
+            except ImportError:  # Python 3
                 from tkinter import Tk
             r = Tk()
             r.withdraw()
@@ -69,10 +74,13 @@ def send_password(args, finalhash):
             r.update()
             r.destroy()
     elif args.output:
-        # TODO Change password store location and check platform
-        file = open('/tmp/password.txt', 'w')
-        file.write(hash)
-        file.close()
+        if platform.system != 'Windows':
+            file = open('/tmp/password.txt', 'w')
+            file.write(hash)
+            file.close()
+        else:
+            print('This function is only avaliable on POSIX compliant'
+                  'operating sytems.')
 
 
 def gui_password():
@@ -110,14 +118,30 @@ if __name__ == "__main__":
     '''
     ip = ip.encode('UTF-8')
     ip = binascii.hexlify(ip)
-    ip = str(int(ip, 16))
+    ip = str(int(ip, 16)).encode('UTF-8')
 
-    passhash = hashlib.sha256(ip.encode('UTF-8'))
-    passhash = passhash.hexdigest()
-    storehash = hashlib.sha256(passhash.encode('UTF-8'))
-    storehash = storehash.hexdigest()
+    passhash = None
+    storehash = None
+    if args.bcrypt:
+        # bcrypt hashing
+        # TODO Actually finish bcrypt
+        try:
+            import bcrypt
+            passhash = bcrypt.hashpw(ip, conf['salt'])
+            storehash = bcrypt.hashpw(passhash, conf['salt'])
+
+        except ImportError:
+            print('Bcrypt is not installed')
+            sys.exit(1)
+
+    else:
+        # SHA256 by default
+        passhash = hashlib.sha256(ip)
+        passhash = passhash.hexdigest()
+        storehash = hashlib.sha256(passhash.encode('UTF-8'))
+        storehash = storehash.hexdigest()
     if storehash == conf['pswd']:
-        # Double hash if stored hash is correct.
+        # If double hash is correct (stored hash), pass correct hash along
         print("Correct")
         send_password(args, passhash)
 

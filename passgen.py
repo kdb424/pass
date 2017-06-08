@@ -2,11 +2,26 @@
 """
     Creates a psasword hash file for input verification and backup passwords
 """
+import argparse
 import binascii
 import hashlib
 import getpass
 import sys
 import yaml
+
+
+def parse_args():
+    """
+        Parses Arguments
+    """
+    parser = argparse.ArgumentParser(
+        description='Make passwords harder to hack.')
+    parser.add_argument(
+        '-b', '--bcrypt',
+        help='Use bcrypt',
+        action='store_true',
+        )
+    return parser.parse_args()
 
 
 def write_conf(cf, data):
@@ -18,8 +33,10 @@ def write_conf(cf, data):
 
 
 if __name__ == "__main__":
+    args = parse_args()
     backup_pswds = []
     main_pswd = ''
+    salt = None
     if not sys.stdin.isatty():
         main_pswd = str(sys.stdin.read().strip())
     else:
@@ -27,13 +44,25 @@ if __name__ == "__main__":
         main_pswd = getpass.getpass(prompt='')
     main_pswd = main_pswd.encode('UTF-8')
     main_pswd = binascii.hexlify(main_pswd)
-    main_pswd = str(int(main_pswd, 16))
+    main_pswd = str(int(main_pswd, 16)).encode('UTF-8')
 
-    main_hash = hashlib.sha256(main_pswd.encode('UTF-8'))
-    main_hash = main_hash.hexdigest()
+    if args.bcrypt:
+        try:
+            import bcrypt
+            salt = bcrypt.gensalt()
+            passhash = bcrypt.hashpw(main_pswd, salt)
+            storehash = bcrypt.hashpw(passhash, salt)
 
-    main_hash_store = hashlib.sha256(main_hash.encode('UTF-8'))
-    main_hash_store = main_hash_store.hexdigest()
+        except ImportError:
+            print('Bcrypt not installed. A salt was not generated')
+            sys.exit(1)
+
+    else:
+        passhash = hashlib.sha256(main_pswd)
+        passhash = passhash.hexdigest()
+
+        storehash = hashlib.sha256(passhash)
+        storehash = storehash.hexdigest()
 
     if sys.stdin.isatty():
         while True:
@@ -43,11 +72,11 @@ if __name__ == "__main__":
                 bak_pswd = getpass.getpass(prompt='')
                 bak_pswd = bak_pswd.encode('UTF-8')
                 bak_pswd = binascii.hexlify(bak_pswd)
-                bak_pswd = str(int(bak_pswd, 16))
+                bak_pswd = str(int(bak_pswd, 16)).encode('UTF-8')
 
-                bak_hash = hashlib.sha256(bak_pswd.encode('UTF-8'))
+                bak_hash = hashlib.sha256(bak_pswd)
                 bak_hash = bak_hash.hexdigest()
-                bak_hash = hashlib.sha256(bak_pswd.encode('UTF-8'))
+                bak_hash = hashlib.sha256(bak_pswd)
                 bak_hash = bak_hash.hexdigest()
                 bak_diff = int(bak_pswd) - int(main_pswd)
                 backup_pswds.append('{}:{}'.format(bak_hash, bak_diff))
@@ -55,5 +84,9 @@ if __name__ == "__main__":
             else:
                 break
 
-    conf = {'pswd': main_hash_store, 'backups': backup_pswds}
+    if salt is not None:
+        conf = {'salt': salt, 'pswd': storehash, 'backups': backup_pswds}
+    else:
+        conf = {'pswd': storehash, 'backups': backup_pswds}
+
     write_conf('passwords.cfg', conf)
