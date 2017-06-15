@@ -41,6 +41,10 @@ def parse_args():
         help='Use bcrypt',
         action='store_true',
         )
+    parser.add_argument(
+        '-t', '--truncate',
+        help='Truncate to length',
+        )
     return parser.parse_args()
 
 
@@ -57,6 +61,10 @@ def send_password(args, finalhash):
     '''
         Send password to the specified output
     '''
+    if args.truncate is not None:
+        truncate = int(args.truncate)
+        print('Truncating Password to {} characters'.format(truncate))
+        finalhash = finalhash[:truncate]
     if args.clipboard:
         if platform.system() == 'Linux':
             from subprocess import Popen, PIPE
@@ -95,7 +103,7 @@ def gui_password():
         from tkinter.simpledialog import askstring
     root = Tk()
     root.withdraw()
-    return askstring("Password", "Enter password:", show='*')
+    return askstring("Password", "Enter password: ", show='*')
 
 
 if __name__ == "__main__":
@@ -111,7 +119,7 @@ if __name__ == "__main__":
     elif args.gui:
         ip = gui_password()
     else:
-        ip = getpass.getpass(prompt='')
+        ip = getpass.getpass(prompt='Enter password ->')
     '''
         Password is encoded to UTF-8, converted to hex based on ASCII,
         then converted to a base 10 int for recovery options.
