@@ -70,11 +70,16 @@ def send_password(args, finalhash):
             from subprocess import Popen, PIPE
             p = Popen(['xsel', '-pib'], stdin=PIPE)
             p.communicate(input=str.encode(finalhash))
-        elif platform.system == 'Darwin' or platform.system() == 'Windows':
-            try:  # Python 2
-                from Tkinter import Tk
-            except ImportError:  # Python 3
+        elif platform.system() == 'Darwin':
+            import subprocess
+            process = subprocess.Popen(
+                'pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
+            process.communicate(finalhash.encode('utf-8'))
+        elif platform.system() == 'Windows':
+            try:  # Python 3
                 from tkinter import Tk
+            except ImportError:  # Python 3
+                from Tkinter import Tk
             r = Tk()
             r.withdraw()
             r.clipboard_clear()
