@@ -45,6 +45,11 @@ def parse_args():
         '-t', '--truncate',
         help='Truncate to length',
         )
+    parser.add_argument(
+        '-G', '--generate',
+        help='Generate a new password',
+        action='store_true',
+        )
     return parser.parse_args()
 
 
@@ -52,9 +57,25 @@ def get_conf(config_file):
     """
         Returns a list of titles from config file
     """
-    with open(config_file, 'r') as config:
-        cfg = yaml.load(config)
-        return cfg
+    try:
+        with open(config_file, 'r') as config:
+            cfg = yaml.load(config)
+            return cfg
+    except OSError as e:
+        print('Config file not found')
+        return 0
+
+
+def write_conf(cf, data):
+    """
+        Writes config file
+    """
+    try:
+        with open(cf, 'w') as config:
+            yaml.dump(data, config, default_flow_style=False)
+    except OSError as e:
+        print('Config file not written')
+        return 0
 
 
 def send_password(args, finalhash):
@@ -63,6 +84,7 @@ def send_password(args, finalhash):
     '''
     if args.truncate is not None:
         truncate = int(args.truncate)
+        #TODO Check if TTY and support GUI
         print('Truncating Password to {} characters'.format(truncate))
         finalhash = finalhash[:truncate]
     if args.clipboard:
@@ -92,6 +114,7 @@ def send_password(args, finalhash):
             file.write(hash)
             file.close()
         else:
+            #TODO Check if TTY and support GUI
             print('This function is only avaliable on POSIX compliant'
                   'operating sytems.')
 
@@ -110,28 +133,20 @@ def gui_password():
     root.withdraw()
     return askstring("Password", "Enter password: ", show='*')
 
-
-if __name__ == "__main__":
-    args = parse_args()
-    if not args.config:
-        conf = get_conf("passwords.cfg")
-    else:
-        conf = get_conf(args.config)
-
-    ip = ''
-    if not sys.stdin.isatty():
-        ip = str(sys.stdin.read().strip())
-    elif args.gui:
-        ip = gui_password()
-    else:
-        ip = getpass.getpass(prompt='Enter password ->')
+def check_pass(args, input_pass):
+    '''
+        Validates password against the config file
+    '''
+    conf = get_conf(args.config)
+    if conf is 0:
+        sys.exit(1)
     '''
         Password is encoded to UTF-8, converted to hex based on ASCII,
         then converted to a base 10 int for recovery options.
     '''
-    ip = ip.encode('UTF-8')
-    ip = binascii.hexlify(ip)
-    ip = str(int(ip, 16)).encode('UTF-8')
+    input_pass = input_pass.encode('UTF-8')
+    input_pass = binascii.hexlify(input_pass)
+    input_pass = str(int(input_pass, 16)).encode('UTF-8')
 
     passhash = None
     storehash = None
@@ -139,42 +154,97 @@ if __name__ == "__main__":
         # bcrypt hashing
         try:
             import bcrypt
-            passhash = bcrypt.hashpw(ip, conf['salt'])
+            passhash = bcrypt.hashpw(input_pass, conf['salt'])
             storehash = bcrypt.hashpw(passhash, conf['salt'])
             if storehash == conf['pswd']:
+                #TODO Check if TTY and support GUI
                 print('Correct')
                 send_password(args, passhash.decode('UTF-8'))
 
 
         except ImportError:
+            #TODO Check if TTY and support GUI
             print('Bcrypt is not installed')
             sys.exit(1)
 
     else:
         # SHA256 by default
-        passhash = hashlib.sha256(ip)
+        passhash = hashlib.sha256(input_pass)
         passhash = passhash.hexdigest()
         storehash = hashlib.sha256(passhash.encode('UTF-8'))
         storehash = storehash.hexdigest()
         if storehash == conf['pswd']:
             # If double hash is correct (stored hash), pass correct hash along
+            #TODO Check if TTY and support GUI
             print("Correct")
             send_password(args, passhash)
 
         else:
-            for i in conf['backups']:
-                bakhash, diff = i.split(':')
-                '''
-                If a backup hash is found, apply the stored differential
-                to create the correct input as recovery.
-                '''
-                passhash = str(int(ip) - int(diff))
+            pass  #TODO handle incorrect passwords
 
-                passhash = hashlib.sha256(passhash.encode('UTF-8'))
-                passhash = passhash.hexdigest()
-                storehash = hashlib.sha256(passhash.encode('UTF-8'))
-                storehash = storehash.hexdigest()
-                if storehash == conf['pswd']:
-                    # Emergency exit
-                    print('Backup hash accepted')
-                    send_password(args, passhash)
+def gen_pass(args, main_pswd):
+    '''
+        Generates a pasword and stores the hashed results
+        to a configuration file.
+    '''
+    conf_file = args.config
+
+    salt = None
+    main_pswd = main_pswd.encode('UTF-8')
+    main_pswd = binascii.hexlify(main_pswd)
+    main_pswd = str(int(main_pswd, 16))
+    main_pswd = main_pswd.encode('UTF-8')
+
+    if args.bcrypt:
+        try:
+            import bcrypt
+            if salt is None:
+                salt = bcrypt.gensalt()
+
+            passhash = bcrypt.hashpw(main_pswd, salt)
+            storehash = bcrypt.hashpw(passhash, salt)
+
+        except ImportError:
+            #TODO Do check for GUI/TTY
+            print('Bcrypt not installed. Program must exit.')
+            sys.exit(1)
+
+    else:
+        passhash = hashlib.sha256(main_pswd)
+        passhash = passhash.hexdigest()
+
+        storehash = hashlib.sha256(passhash.encode('UTF-8'))
+        storehash = storehash.hexdigest()
+
+
+    if salt is not None:
+        conf = {'salt': salt, 'pswd': storehash}
+    else:
+        conf = {'pswd': storehash}
+    if write_conf(conf_file, conf) is 0:
+        #TODO Handle fire write error better
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    if args.config is None:
+        print('No config file specified')
+        sys.exit(1)
+
+    if args.generate:
+        if not sys.stdin.isatty():
+            main_pswd = str(sys.stdin.read().strip())
+        else:
+            print('Enter new password')
+            main_pswd = getpass.getpass(prompt='')
+
+        gen_pass(args, main_pswd)
+    else:
+        if args.gui:
+            input_pass = gui_password()
+        elif not sys.stdin.isatty():
+            input_pass = str(sys.stdin.read().strip())
+        else:
+            input_pass = getpass.getpass(prompt='Enter password ->')
+        check_pass(args, input_pass)
