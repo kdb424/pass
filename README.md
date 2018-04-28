@@ -1,11 +1,10 @@
 # pass
-PASS: Passwords are super simple. Password encryption and strengthening.
+PASS: Password encryption and strengthening.
 
-Encrypts passwords to sha256 to be used as replacement password.
-It will allow backup passwords to be stored on the system as backup passwords which are stored as a differential of the original to allow for backup passwords in case the original is lost, or more passwords are desired.
+Encrypts passwords to sha256 or bcrypt to be used as replacement password.
 
 ```
-usage: pass.py [-h] [-c] [-C CONFIG] [-g]
+usage: pass.py [-h] [-c] [-C CONFIG] [-g] [-o] [-b] [-t TRUNCATE] [-G]
 
 Make passwords harder to hack.
 
@@ -16,4 +15,8 @@ optional arguments:
                         Specifies a config file
   -g, --gui             GUI password input
   -o, --output          Output file
+  -b, --bcrypt          Use bcrypt
+  -t TRUNCATE, --truncate TRUNCATE
+                        Truncate to length
+  -G, --generate        Generate a new password
 ```
